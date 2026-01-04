@@ -260,18 +260,18 @@ local function GetBagPets(filter)
     return pets
 end
 
--- Scan spellbook for pet spells (uses ZPets tab on Turtle WoW)
+-- Scan spellbook for pet spells (uses ZzCompanions tab on Turtle WoW)
 local function GetSpellPets(filter)
     local pets = {}
 
-    -- Find the ZPets tab (Turtle WoW specific)
+    -- Find the ZzCompanions tab (Turtle WoW specific)
     local numTabs = GetNumSpellTabs()
     local petTabOffset = nil
     local petTabCount = nil
 
     for tab = 1, numTabs do
         local name, texture, offset, numSpells = GetSpellTabInfo(tab)
-        if name == "ZPets" or name == "Companions" or name == "Pets" then
+        if name == "ZzCompanions" then
             petTabOffset = offset
             petTabCount = numSpells
             break
