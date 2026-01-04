@@ -1,0 +1,7 @@
+## Interface: 11200
+## Title: 1701 Addons - Random Pet
+## Notes: Random companion pet selector with optional keyword filtering
+## Author: Claude
+## Version: 1.0.0
+
+1701_Random_Pet.lua
