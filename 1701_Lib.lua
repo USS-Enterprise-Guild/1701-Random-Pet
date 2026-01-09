@@ -5,7 +5,7 @@
     Only the first (or newer) version initializes.
 ]]
 
-local LIB_VERSION = 5
+local LIB_VERSION = 6
 if Lib1701 and Lib1701.version >= LIB_VERSION then
     return
 end
@@ -64,9 +64,18 @@ function Lib1701.ExtractLinkName(text)
 end
 
 -- Parse input as comma-separated list, extracting link names
+-- Also supports consecutive spell links without commas: [Pet1][Pet2]
 -- Returns table of names (strings)
 function Lib1701.ParseInputList(input)
-    local items = Lib1701.ParseCSV(input)
+    if not input or input == "" then
+        return {}
+    end
+
+    -- Insert commas between consecutive links
+    local normalized = string.gsub(input, "|r|c", "|r,|c")  -- full links
+    normalized = string.gsub(normalized, "%]%[", "],[")     -- plain brackets
+
+    local items = Lib1701.ParseCSV(normalized)
     local results = {}
 
     for _, item in ipairs(items) do
