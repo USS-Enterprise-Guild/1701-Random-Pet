@@ -2,7 +2,7 @@
 ## Title: 1701 Addons - Random Pet
 ## Notes: Random companion pet selector with optional keyword filtering
 ## Author: Claude
-## Version: 1.3.0
+## Version: 1.4.0
 ## SavedVariablesPerCharacter: RandomPet1701_Data
 
 1701_Lib.lua

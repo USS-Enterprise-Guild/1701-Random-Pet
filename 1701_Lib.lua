@@ -5,7 +5,7 @@
     Only the first (or newer) version initializes.
 ]]
 
-local LIB_VERSION = 4
+local LIB_VERSION = 5
 if Lib1701 and Lib1701.version >= LIB_VERSION then
     return
 end
@@ -99,6 +99,26 @@ function Lib1701.IsExactMatch(name, filter)
         return false
     end
     return string.lower(name) == string.lower(filter)
+end
+
+-- Validate group name: alphanumeric, hyphen, underscore only
+-- Returns: isValid (bool), errorMsg (string or nil)
+function Lib1701.IsValidGroupName(name)
+    if not name or name == "" then
+        return false, "Group name cannot be empty"
+    end
+
+    -- Check for link characters (item/spell links)
+    if string.find(name, "|") or string.find(name, "%[") or string.find(name, "%]") then
+        return false, "Group name cannot be an item or spell link"
+    end
+
+    -- Check for valid characters only (alphanumeric, hyphen, underscore)
+    if string.find(name, "[^%w%-_]") then
+        return false, "Group name can only contain letters, numbers, hyphens, and underscores"
+    end
+
+    return true, nil
 end
 
 -- Check if a name is in the exclusion list
