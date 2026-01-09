@@ -5,7 +5,7 @@
     Only the first (or newer) version initializes.
 ]]
 
-local LIB_VERSION = 3
+local LIB_VERSION = 4
 if Lib1701 and Lib1701.version >= LIB_VERSION then
     return
 end
@@ -33,6 +33,46 @@ function Lib1701.ParseCSV(input)
         local trimmed = string.gsub(item, "^%s*(.-)%s*$", "%1")
         if trimmed ~= "" then
             table.insert(results, trimmed)
+        end
+    end
+
+    return results
+end
+
+-- Extract name from a spell/item link, or return original text
+-- Handles: |cffffffff|Hspell:12345|h[Spell Name]|h|r -> "Spell Name"
+-- Also handles plain [Name] -> "Name"
+function Lib1701.ExtractLinkName(text)
+    if not text then
+        return nil
+    end
+
+    -- Try to extract name from full link format: |c...|H...|h[Name]|h|r
+    local _, _, name = string.find(text, "|h%[(.-)%]|h")
+    if name then
+        return name
+    end
+
+    -- Try plain bracket format: [Name]
+    _, _, name = string.find(text, "^%[(.-)%]$")
+    if name then
+        return name
+    end
+
+    -- Return original text (trimmed)
+    return string.gsub(text, "^%s*(.-)%s*$", "%1")
+end
+
+-- Parse input as comma-separated list, extracting link names
+-- Returns table of names (strings)
+function Lib1701.ParseInputList(input)
+    local items = Lib1701.ParseCSV(input)
+    local results = {}
+
+    for _, item in ipairs(items) do
+        local name = Lib1701.ExtractLinkName(item)
+        if name and name ~= "" then
+            table.insert(results, name)
         end
     end
 
