@@ -355,6 +355,64 @@ local function ShouldIncludePet(petName, filter, skipExclusions)
     return Lib1701.MatchesFilter(petName, filter)
 end
 
+-- Message prefix
+local MSG_PREFIX = "1701_Random_Pet"
+
+-- Handle /pet exclude <filter>
+local function DoExclude(filter)
+    if not filter or filter == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet exclude <filter>")
+        return
+    end
+
+    local added, alreadyExcluded = Lib1701.AddExclusions(
+        RandomPet1701_Data.exclusions,
+        filter,
+        GetAllPetNames
+    )
+
+    if table.getn(added) > 0 then
+        Lib1701.Message(MSG_PREFIX, "Excluded: " .. table.concat(added, ", ") .. " (" .. table.getn(added) .. " pets)")
+    elseif table.getn(alreadyExcluded) > 0 then
+        Lib1701.Message(MSG_PREFIX, "Already excluded: " .. table.concat(alreadyExcluded, ", "))
+    else
+        Lib1701.Message(MSG_PREFIX, "No pets found matching '" .. filter .. "'")
+    end
+end
+
+-- Handle /pet unexclude <filter>
+local function DoUnexclude(filter)
+    if not filter or filter == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet unexclude <filter>")
+        return
+    end
+
+    local removed, notFound = Lib1701.RemoveExclusions(
+        RandomPet1701_Data.exclusions,
+        filter
+    )
+
+    if table.getn(removed) > 0 then
+        Lib1701.Message(MSG_PREFIX, "Unexcluded: " .. table.concat(removed, ", ") .. " (" .. table.getn(removed) .. " pets)")
+    else
+        Lib1701.Message(MSG_PREFIX, "No excluded pets found matching '" .. filter .. "'")
+    end
+end
+
+-- Handle /pet excludelist
+local function DoExcludeList()
+    local exclusions = RandomPet1701_Data.exclusions
+    if table.getn(exclusions) == 0 then
+        Lib1701.Message(MSG_PREFIX, "No pets excluded")
+        return
+    end
+
+    Lib1701.Message(MSG_PREFIX, "Excluded pets (" .. table.getn(exclusions) .. "):")
+    for _, name in ipairs(exclusions) do
+        DEFAULT_CHAT_FRAME:AddMessage("  - " .. name)
+    end
+end
+
 -- Use a pet
 local function UsePet(pet)
     if pet.type == "item" then
