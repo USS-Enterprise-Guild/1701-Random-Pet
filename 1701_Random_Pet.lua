@@ -333,6 +333,32 @@ local function GetAllPets(filter)
     return allPets
 end
 
+-- Get all pet names for Lib1701 functions
+local function GetAllPetNames()
+    local pets = GetAllPets(nil)
+    local names = {}
+    for _, pet in ipairs(pets) do
+        table.insert(names, { name = pet.name })
+    end
+    return names
+end
+
+-- Check if pet should be included based on filter and exclusions
+local function ShouldIncludePet(petName, filter, skipExclusions)
+    -- Exact match bypasses exclusions
+    if Lib1701.IsExactMatch(petName, filter) then
+        return true
+    end
+
+    -- Check exclusions (unless skipped)
+    if not skipExclusions and Lib1701.IsExcluded(RandomPet1701_Data.exclusions, petName) then
+        return false
+    end
+
+    -- Apply filter
+    return Lib1701.MatchesFilter(petName, filter)
+end
+
 -- Use a pet
 local function UsePet(pet)
     if pet.type == "item" then
