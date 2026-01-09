@@ -699,10 +699,50 @@ local function SlashCmdHandler(msg)
         msg = string.gsub(msg, "^%s*(.-)%s*$", "%1")
     end
 
-    if msg == "debug" then
+    if not msg or msg == "" then
+        DoRandomPet(nil)
+        return
+    end
+
+    -- Parse first word as command
+    local _, _, cmd, rest = string.find(msg, "^(%S+)%s*(.*)")
+    cmd = string.lower(cmd or "")
+    rest = rest or ""
+
+    -- Handle commands
+    if cmd == "debug" then
         DoDebug()
+    elseif cmd == "exclude" then
+        DoExclude(rest)
+    elseif cmd == "unexclude" then
+        DoUnexclude(rest)
+    elseif cmd == "excludelist" then
+        DoExcludeList()
+    elseif cmd == "groups" then
+        DoGroupsList()
+    elseif cmd == "group" then
+        -- Parse subcommand: add/remove/list
+        local _, _, subcmd, groupName, filter = string.find(rest, "^(%S+)%s+(%S+)%s*(.*)")
+        subcmd = string.lower(subcmd or "")
+
+        if subcmd == "add" then
+            DoGroupAdd(groupName, filter)
+        elseif subcmd == "remove" then
+            DoGroupRemove(groupName, filter)
+        elseif subcmd == "list" then
+            DoGroupList(groupName)
+        else
+            Lib1701.Message(MSG_PREFIX, "Usage: /pet group <add|remove|list> <groupname> [filter]")
+        end
     else
-        DoRandomPet(msg)
+        -- Check if it's a group name
+        local members = Lib1701.GetGroup(RandomPet1701_Data.groups, cmd)
+        if members then
+            DoGroupPet(cmd)
+        else
+            -- Treat as filter
+            DoRandomPet(msg)
+        end
     end
 end
 
