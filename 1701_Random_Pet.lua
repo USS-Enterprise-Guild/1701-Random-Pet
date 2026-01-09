@@ -413,6 +413,134 @@ local function DoExcludeList()
     end
 end
 
+-- Reserved command names (cannot be used as group names)
+local RESERVED_COMMANDS = {
+    debug = true,
+    exclude = true,
+    unexclude = true,
+    excludelist = true,
+    group = true,
+    groups = true,
+}
+
+-- Handle /pet group add <name> <filter>
+local function DoGroupAdd(groupName, filter)
+    if not groupName or groupName == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group add <groupname> <filter>")
+        return
+    end
+
+    if RESERVED_COMMANDS[string.lower(groupName)] then
+        Lib1701.Message(MSG_PREFIX, "Cannot use reserved name '" .. groupName .. "' as group name")
+        return
+    end
+
+    if not filter or filter == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group add <groupname> <filter>")
+        return
+    end
+
+    local added, skipped, isNewGroup = Lib1701.AddToGroup(
+        RandomPet1701_Data.groups,
+        groupName,
+        filter,
+        GetAllPetNames,
+        RandomPet1701_Data.exclusions
+    )
+
+    local msg = ""
+    if isNewGroup then
+        msg = "Created group '" .. groupName .. "': "
+    else
+        msg = "Added to '" .. groupName .. "': "
+    end
+
+    if table.getn(added) > 0 then
+        msg = msg .. table.concat(added, ", ") .. " (" .. table.getn(added) .. " pets"
+        if table.getn(skipped) > 0 then
+            msg = msg .. ", skipped " .. table.getn(skipped) .. " excluded"
+        end
+        msg = msg .. ")"
+        Lib1701.Message(MSG_PREFIX, msg)
+    elseif table.getn(skipped) > 0 then
+        Lib1701.Message(MSG_PREFIX, "All matching pets are excluded (" .. table.getn(skipped) .. " skipped)")
+    else
+        Lib1701.Message(MSG_PREFIX, "No pets found matching '" .. filter .. "'")
+    end
+end
+
+-- Handle /pet group remove <name> <filter>
+local function DoGroupRemove(groupName, filter)
+    if not groupName or groupName == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter>")
+        return
+    end
+
+    if not filter or filter == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter>")
+        return
+    end
+
+    local removed, groupDeleted = Lib1701.RemoveFromGroup(
+        RandomPet1701_Data.groups,
+        groupName,
+        filter
+    )
+
+    if table.getn(removed) > 0 then
+        local msg = "Removed from '" .. groupName .. "': " .. table.concat(removed, ", ")
+        if groupDeleted then
+            msg = msg .. " (group deleted)"
+        end
+        Lib1701.Message(MSG_PREFIX, msg)
+    else
+        local members = Lib1701.GetGroup(RandomPet1701_Data.groups, groupName)
+        if not members then
+            Lib1701.Message(MSG_PREFIX, "Group '" .. groupName .. "' not found")
+        else
+            Lib1701.Message(MSG_PREFIX, "No pets in '" .. groupName .. "' matching '" .. filter .. "'")
+        end
+    end
+end
+
+-- Handle /pet group list <name>
+local function DoGroupList(groupName)
+    if not groupName or groupName == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group list <groupname>")
+        return
+    end
+
+    local members, storedName = Lib1701.GetGroup(RandomPet1701_Data.groups, groupName)
+    if not members then
+        Lib1701.Message(MSG_PREFIX, "Group '" .. groupName .. "' not found")
+        return
+    end
+
+    Lib1701.Message(MSG_PREFIX, "Group '" .. storedName .. "' (" .. table.getn(members) .. " pets):")
+    for _, name in ipairs(members) do
+        DEFAULT_CHAT_FRAME:AddMessage("  - " .. name)
+    end
+end
+
+-- Handle /pet groups
+local function DoGroupsList()
+    local groups = RandomPet1701_Data.groups
+    local count = 0
+    for _ in pairs(groups) do
+        count = count + 1
+    end
+
+    if count == 0 then
+        Lib1701.Message(MSG_PREFIX, "No groups defined")
+        return
+    end
+
+    Lib1701.Message(MSG_PREFIX, "Pet groups (" .. count .. "):")
+    for name, members in pairs(groups) do
+        DEFAULT_CHAT_FRAME:AddMessage("  - " .. name .. " (" .. table.getn(members) .. " pets)")
+    end
+end
+
 -- Use a pet
 local function UsePet(pet)
     if pet.type == "item" then
