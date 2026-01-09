@@ -551,7 +551,7 @@ local function UsePet(pet)
 end
 
 -- Main pet function
-local function DoRandomPet(filter)
+local function DoRandomPet(filter, skipExclusions)
     -- Trim whitespace from filter
     if filter then
         filter = string.gsub(filter, "^%s*(.-)%s*$", "%1")
@@ -560,13 +560,13 @@ local function DoRandomPet(filter)
         end
     end
 
-    local pets = GetAllPets(filter)
+    local pets = GetAllPets(filter, skipExclusions)
 
     if table.getn(pets) == 0 then
         if filter then
-            DEFAULT_CHAT_FRAME:AddMessage("|cFF00FFFF1701_Random_Pet:|r No pets found matching '" .. filter .. "'")
+            Lib1701.Message(MSG_PREFIX, "No pets found matching '" .. filter .. "'")
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cFF00FFFF1701_Random_Pet:|r No pets found in your bags or spellbook.")
+            Lib1701.Message(MSG_PREFIX, "No pets found in your bags or spellbook.")
         end
         return
     end
@@ -574,6 +574,36 @@ local function DoRandomPet(filter)
     -- Pick a random pet
     local pet = pets[math.random(1, table.getn(pets))]
     UsePet(pet)
+end
+
+-- Select random pet from a group
+local function DoGroupPet(groupName)
+    local members = Lib1701.GetGroup(RandomPet1701_Data.groups, groupName)
+    if not members or table.getn(members) == 0 then
+        Lib1701.Message(MSG_PREFIX, "Group '" .. groupName .. "' is empty or not found")
+        return
+    end
+
+    -- Pick random name from group
+    local petName = members[math.random(1, table.getn(members))]
+
+    -- Find the pet by exact name (skip exclusions for groups)
+    local pets = GetAllPets(petName, true)
+
+    -- Filter to exact match
+    local exactPet = nil
+    for _, pet in ipairs(pets) do
+        if string.lower(pet.name) == string.lower(petName) then
+            exactPet = pet
+            break
+        end
+    end
+
+    if exactPet then
+        UsePet(exactPet)
+    else
+        Lib1701.Message(MSG_PREFIX, "Pet '" .. petName .. "' not found (may no longer be available)")
+    end
 end
 
 -- Debug function to show detected pets and spellbook contents
