@@ -472,6 +472,17 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("VARIABLES_LOADED")
 frame:SetScript("OnEvent", function()
+    -- Initialize saved variables
+    if not RandomPet1701_Data then
+        RandomPet1701_Data = {}
+    end
+    if not RandomPet1701_Data.exclusions then
+        RandomPet1701_Data.exclusions = {}
+    end
+    if not RandomPet1701_Data.groups then
+        RandomPet1701_Data.groups = {}
+    end
+
     SLASH_RANDOMPET17011 = "/pet"
     SLASH_RANDOMPET17012 = "/randompet"
     SlashCmdList["RANDOMPET1701"] = SlashCmdHandler
