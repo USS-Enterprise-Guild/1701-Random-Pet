@@ -1,13 +1,29 @@
 --[[
   1701 Random Pet - Random Companion Pet Selector for WoW 1.12 / Turtle WoW
+  Version 1.1.0
 
-  Usage: /pet [filter]
+  Usage: /pet [filter|groupname|command]
 
-  Examples:
-    /pet         - Random pet from all available
-    /pet cat     - Random cat pet
-    /pet whelp   - Random whelpling
-    /pet debug   - Show detected pets and spellbook contents
+  Commands:
+    /pet                      - Random pet from all available
+    /pet <filter>             - Random pet matching filter
+    /pet <groupname>          - Random pet from group
+
+    /pet exclude <filter>     - Exclude matching pets
+    /pet unexclude <filter>   - Remove from exclusions
+    /pet excludelist          - Show excluded pets
+
+    /pet group add <n> <f>    - Add matching pets to group
+    /pet group remove <n> <f> - Remove from group
+    /pet group list <name>    - Show pets in group
+    /pet groups               - List all groups
+
+    /pet debug                - Show detected pets
+
+  Notes:
+    - Exact match (e.g., /pet "Azure Whelpling") bypasses exclusions
+    - Groups ignore exclusions entirely
+    - Uses 1701_Lib.lua shared library
 ]]
 
 RandomPet1701 = {}
