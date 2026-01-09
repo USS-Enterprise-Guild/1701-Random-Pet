@@ -608,7 +608,7 @@ end
 
 -- Debug function to show detected pets and spellbook contents
 local function DoDebug()
-    DEFAULT_CHAT_FRAME:AddMessage("|cFF00FFFF1701_Random_Pet Debug:|r Scanning...")
+    Lib1701.Message(MSG_PREFIX, "Debug: Scanning...")
 
     -- Show spell tab info
     local numTabs = GetNumSpellTabs()
