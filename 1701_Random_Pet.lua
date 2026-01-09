@@ -1,6 +1,6 @@
 --[[
   1701 Random Pet - Random Companion Pet Selector for WoW 1.12 / Turtle WoW
-  Version 1.1.1
+  Version 1.2.0
 
   Usage: /pet [filter|groupname|command]
 
@@ -175,46 +175,6 @@ local PET_PATTERNS = {
     "Egg",
 }
 
--- Class pet spells (Hunter pets are not companions, but some classes might have)
-local CLASS_PET_SPELLS = {
-    -- These would be companion summoning spells, not hunter pets
-}
-
--- Check if a spell name matches pet patterns
-local function IsPetSpell(spellName)
-    if not spellName then return false end
-
-    -- Check class pet spells
-    if CLASS_PET_SPELLS[spellName] then
-        return true
-    end
-
-    local lowerName = string.lower(spellName)
-
-    -- Check for common pet keywords
-    if string.find(lowerName, "companion") or
-       string.find(lowerName, "minipet") or
-       string.find(lowerName, "mini%-pet") or
-       string.find(lowerName, "summon") and (
-           string.find(lowerName, "whelp") or
-           string.find(lowerName, "pet") or
-           string.find(lowerName, "cat") or
-           string.find(lowerName, "frog") or
-           string.find(lowerName, "rabbit")
-       ) then
-        return true
-    end
-
-    -- Check against known pet patterns
-    for _, pattern in ipairs(PET_PATTERNS) do
-        if string.find(lowerName, string.lower(pattern)) then
-            return true
-        end
-    end
-
-    return false
-end
-
 -- Check if an item name matches pet patterns
 local function IsPetItem(itemName)
     if not itemName then return false end
@@ -285,54 +245,27 @@ local function GetBagPets(filter)
     return pets
 end
 
--- Scan spellbook for pet spells (uses ZzCompanions tab on Turtle WoW)
-local function GetSpellPets(filter)
+-- Get pets from ZzCompanions spellbook tab
+local function GetSpellPets()
     local pets = {}
 
-    -- Find the ZzCompanions tab (Turtle WoW specific)
+    -- Find the ZzCompanions tab
     local numTabs = GetNumSpellTabs()
-    local petTabOffset = nil
-    local petTabCount = nil
-
     for tab = 1, numTabs do
         local name, texture, offset, numSpells = GetSpellTabInfo(tab)
         if name == "ZzCompanions" then
-            petTabOffset = offset
-            petTabCount = numSpells
+            for i = 1, numSpells do
+                local spellIndex = offset + i
+                local spellName = GetSpellName(spellIndex, BOOKTYPE_SPELL)
+                if spellName then
+                    table.insert(pets, {
+                        type = "spell",
+                        name = spellName,
+                        spellIndex = spellIndex
+                    })
+                end
+            end
             break
-        end
-    end
-
-    -- If pet tab found, get all spells from it
-    if petTabOffset and petTabCount then
-        for i = 1, petTabCount do
-            local spellIndex = petTabOffset + i
-            local spellName = GetSpellName(spellIndex, BOOKTYPE_SPELL)
-            if spellName then
-                table.insert(pets, {
-                    type = "spell",
-                    name = spellName,
-                    spellIndex = spellIndex
-                })
-            end
-        end
-    else
-        -- Fallback: scan all spells using pattern matching (for non-Turtle WoW)
-        local i = 1
-        while true do
-            local spellName = GetSpellName(i, BOOKTYPE_SPELL)
-            if not spellName then
-                break
-            end
-
-            if IsPetSpell(spellName) then
-                table.insert(pets, {
-                    type = "spell",
-                    name = spellName,
-                    spellIndex = i
-                })
-            end
-            i = i + 1
         end
     end
 
@@ -675,38 +608,6 @@ local function DoDebug()
         end
     end
     DEFAULT_CHAT_FRAME:AddMessage("Pet-like items in bags: " .. bagCount)
-
-    -- Scan spellbook for pet-like spells
-    DEFAULT_CHAT_FRAME:AddMessage("|cFFFFFF00Scanning all spells for pet-like names:|r")
-    local i = 1
-    local totalSpells = 0
-    while true do
-        local spellName = GetSpellName(i, BOOKTYPE_SPELL)
-        if not spellName then
-            break
-        end
-        totalSpells = i
-
-        local lowerName = string.lower(spellName)
-        local looksLikePet = IsPetSpell(spellName) or
-            string.find(lowerName, "pet") or
-            string.find(lowerName, "companion") or
-            string.find(lowerName, "whelp") or
-            string.find(lowerName, "cat") or
-            string.find(lowerName, "parrot") or
-            string.find(lowerName, "frog") or
-            string.find(lowerName, "snake") or
-            string.find(lowerName, "rabbit") or
-            string.find(lowerName, "turtle") or
-            string.find(lowerName, "murloc")
-
-        if looksLikePet then
-            local detected = IsPetSpell(spellName) and " |cFF00FF00[DETECTED]|r" or " |cFFFF0000[MISSED]|r"
-            DEFAULT_CHAT_FRAME:AddMessage("  " .. i .. ": " .. spellName .. detected)
-        end
-        i = i + 1
-    end
-    DEFAULT_CHAT_FRAME:AddMessage("Total spells scanned: " .. totalSpells)
 end
 
 -- Slash command handler
