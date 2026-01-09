@@ -1,6 +1,6 @@
 --[[
   1701 Random Pet - Random Companion Pet Selector for WoW 1.12 / Turtle WoW
-  Version 1.1.1
+  Version 1.3.0
 
   Usage: /pet [filter|groupname|command]
 
@@ -21,6 +21,8 @@
     /pet debug                - Show detected pets
 
   Notes:
+    - Shift-click spell links are supported (e.g., /pet exclude [Pet Name])
+    - Comma-separated lists are supported (e.g., /pet exclude cat, whelp, frog)
     - Exact match (e.g., /pet "Azure Whelpling") bypasses exclusions
     - Groups ignore exclusions entirely
     - Uses 1701_Lib.lua shared library
@@ -175,46 +177,6 @@ local PET_PATTERNS = {
     "Egg",
 }
 
--- Class pet spells (Hunter pets are not companions, but some classes might have)
-local CLASS_PET_SPELLS = {
-    -- These would be companion summoning spells, not hunter pets
-}
-
--- Check if a spell name matches pet patterns
-local function IsPetSpell(spellName)
-    if not spellName then return false end
-
-    -- Check class pet spells
-    if CLASS_PET_SPELLS[spellName] then
-        return true
-    end
-
-    local lowerName = string.lower(spellName)
-
-    -- Check for common pet keywords
-    if string.find(lowerName, "companion") or
-       string.find(lowerName, "minipet") or
-       string.find(lowerName, "mini%-pet") or
-       string.find(lowerName, "summon") and (
-           string.find(lowerName, "whelp") or
-           string.find(lowerName, "pet") or
-           string.find(lowerName, "cat") or
-           string.find(lowerName, "frog") or
-           string.find(lowerName, "rabbit")
-       ) then
-        return true
-    end
-
-    -- Check against known pet patterns
-    for _, pattern in ipairs(PET_PATTERNS) do
-        if string.find(lowerName, string.lower(pattern)) then
-            return true
-        end
-    end
-
-    return false
-end
-
 -- Check if an item name matches pet patterns
 local function IsPetItem(itemName)
     if not itemName then return false end
@@ -285,54 +247,27 @@ local function GetBagPets(filter)
     return pets
 end
 
--- Scan spellbook for pet spells (uses ZzCompanions tab on Turtle WoW)
-local function GetSpellPets(filter)
+-- Get pets from ZzCompanions spellbook tab
+local function GetSpellPets()
     local pets = {}
 
-    -- Find the ZzCompanions tab (Turtle WoW specific)
+    -- Find the ZzCompanions tab
     local numTabs = GetNumSpellTabs()
-    local petTabOffset = nil
-    local petTabCount = nil
-
     for tab = 1, numTabs do
         local name, texture, offset, numSpells = GetSpellTabInfo(tab)
         if name == "ZzCompanions" then
-            petTabOffset = offset
-            petTabCount = numSpells
+            for i = 1, numSpells do
+                local spellIndex = offset + i
+                local spellName = GetSpellName(spellIndex, BOOKTYPE_SPELL)
+                if spellName then
+                    table.insert(pets, {
+                        type = "spell",
+                        name = spellName,
+                        spellIndex = spellIndex
+                    })
+                end
+            end
             break
-        end
-    end
-
-    -- If pet tab found, get all spells from it
-    if petTabOffset and petTabCount then
-        for i = 1, petTabCount do
-            local spellIndex = petTabOffset + i
-            local spellName = GetSpellName(spellIndex, BOOKTYPE_SPELL)
-            if spellName then
-                table.insert(pets, {
-                    type = "spell",
-                    name = spellName,
-                    spellIndex = spellIndex
-                })
-            end
-        end
-    else
-        -- Fallback: scan all spells using pattern matching (for non-Turtle WoW)
-        local i = 1
-        while true do
-            local spellName = GetSpellName(i, BOOKTYPE_SPELL)
-            if not spellName then
-                break
-            end
-
-            if IsPetSpell(spellName) then
-                table.insert(pets, {
-                    type = "spell",
-                    name = spellName,
-                    spellIndex = i
-                })
-            end
-            i = i + 1
         end
     end
 
@@ -375,44 +310,87 @@ end
 -- Message prefix
 local MSG_PREFIX = "1701_Random_Pet"
 
--- Handle /pet exclude <filter>
-local function DoExclude(filter)
-    if not filter or filter == "" then
-        Lib1701.Message(MSG_PREFIX, "Usage: /pet exclude <filter>")
+-- Handle /pet exclude <filter> (supports comma-separated lists and spell links)
+local function DoExclude(input)
+    if not input or input == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet exclude <filter|[link]>, ...")
         return
     end
 
-    local added, alreadyExcluded = Lib1701.AddExclusions(
-        RandomPet1701_Data.exclusions,
-        filter,
-        GetAllPetNames
-    )
+    local filters = Lib1701.ParseInputList(input)
+    if table.getn(filters) == 0 then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet exclude <filter|[link]>, ...")
+        return
+    end
 
-    if table.getn(added) > 0 then
-        Lib1701.Message(MSG_PREFIX, "Excluded: " .. table.concat(added, ", ") .. " (" .. table.getn(added) .. " pets)")
-    elseif table.getn(alreadyExcluded) > 0 then
-        Lib1701.Message(MSG_PREFIX, "Already excluded: " .. table.concat(alreadyExcluded, ", "))
-    else
-        Lib1701.Message(MSG_PREFIX, "No pets found matching '" .. filter .. "'")
+    local allAdded = {}
+    local allAlreadyExcluded = {}
+    local notFound = {}
+
+    for _, filter in ipairs(filters) do
+        local added, alreadyExcluded = Lib1701.AddExclusions(
+            RandomPet1701_Data.exclusions,
+            filter,
+            GetAllPetNames
+        )
+
+        for _, name in ipairs(added) do
+            table.insert(allAdded, name)
+        end
+        for _, name in ipairs(alreadyExcluded) do
+            table.insert(allAlreadyExcluded, name)
+        end
+        if table.getn(added) == 0 and table.getn(alreadyExcluded) == 0 then
+            table.insert(notFound, filter)
+        end
+    end
+
+    if table.getn(allAdded) > 0 then
+        Lib1701.Message(MSG_PREFIX, "Excluded: " .. table.concat(allAdded, ", ") .. " (" .. table.getn(allAdded) .. " pets)")
+    end
+    if table.getn(allAlreadyExcluded) > 0 then
+        Lib1701.Message(MSG_PREFIX, "Already excluded: " .. table.concat(allAlreadyExcluded, ", "))
+    end
+    if table.getn(notFound) > 0 then
+        Lib1701.Message(MSG_PREFIX, "No pets found matching: " .. table.concat(notFound, ", "))
     end
 end
 
--- Handle /pet unexclude <filter>
-local function DoUnexclude(filter)
-    if not filter or filter == "" then
-        Lib1701.Message(MSG_PREFIX, "Usage: /pet unexclude <filter>")
+-- Handle /pet unexclude <filter> (supports comma-separated lists and spell links)
+local function DoUnexclude(input)
+    if not input or input == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet unexclude <filter|[link]>, ...")
         return
     end
 
-    local removed, notFound = Lib1701.RemoveExclusions(
-        RandomPet1701_Data.exclusions,
-        filter
-    )
+    local filters = Lib1701.ParseInputList(input)
+    if table.getn(filters) == 0 then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet unexclude <filter|[link]>, ...")
+        return
+    end
 
-    if table.getn(removed) > 0 then
-        Lib1701.Message(MSG_PREFIX, "Unexcluded: " .. table.concat(removed, ", ") .. " (" .. table.getn(removed) .. " pets)")
-    else
-        Lib1701.Message(MSG_PREFIX, "No excluded pets found matching '" .. filter .. "'")
+    local allRemoved = {}
+    local allNotFound = {}
+
+    for _, filter in ipairs(filters) do
+        local removed = Lib1701.RemoveExclusions(
+            RandomPet1701_Data.exclusions,
+            filter
+        )
+
+        for _, name in ipairs(removed) do
+            table.insert(allRemoved, name)
+        end
+        if table.getn(removed) == 0 then
+            table.insert(allNotFound, filter)
+        end
+    end
+
+    if table.getn(allRemoved) > 0 then
+        Lib1701.Message(MSG_PREFIX, "Unexcluded: " .. table.concat(allRemoved, ", ") .. " (" .. table.getn(allRemoved) .. " pets)")
+    end
+    if table.getn(allNotFound) > 0 then
+        Lib1701.Message(MSG_PREFIX, "No excluded pets found matching: " .. table.concat(allNotFound, ", "))
     end
 end
 
@@ -440,10 +418,10 @@ local RESERVED_COMMANDS = {
     groups = true,
 }
 
--- Handle /pet group add <name> <filter>
-local function DoGroupAdd(groupName, filter)
+-- Handle /pet group add <name> <filter> (supports comma-separated lists and spell links)
+local function DoGroupAdd(groupName, input)
     if not groupName or groupName == "" then
-        Lib1701.Message(MSG_PREFIX, "Usage: /pet group add <groupname> <filter>")
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group add <groupname> <filter|[link]>, ...")
         return
     end
 
@@ -452,71 +430,125 @@ local function DoGroupAdd(groupName, filter)
         return
     end
 
-    if not filter or filter == "" then
-        Lib1701.Message(MSG_PREFIX, "Usage: /pet group add <groupname> <filter>")
+    if not input or input == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group add <groupname> <filter|[link]>, ...")
         return
     end
 
-    local added, skipped, isNewGroup = Lib1701.AddToGroup(
-        RandomPet1701_Data.groups,
-        groupName,
-        filter,
-        GetAllPetNames,
-        RandomPet1701_Data.exclusions
-    )
+    local filters = Lib1701.ParseInputList(input)
+    if table.getn(filters) == 0 then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group add <groupname> <filter|[link]>, ...")
+        return
+    end
+
+    local allAdded = {}
+    local allSkipped = {}
+    local notFound = {}
+    local groupCreated = false
+
+    for _, filter in ipairs(filters) do
+        local added, skipped, isNewGroup = Lib1701.AddToGroup(
+            RandomPet1701_Data.groups,
+            groupName,
+            filter,
+            GetAllPetNames,
+            RandomPet1701_Data.exclusions
+        )
+
+        if isNewGroup then
+            groupCreated = true
+        end
+
+        for _, name in ipairs(added) do
+            table.insert(allAdded, name)
+        end
+        for _, name in ipairs(skipped) do
+            table.insert(allSkipped, name)
+        end
+        if table.getn(added) == 0 and table.getn(skipped) == 0 then
+            table.insert(notFound, filter)
+        end
+    end
 
     local msg = ""
-    if isNewGroup then
+    if groupCreated then
         msg = "Created group '" .. groupName .. "': "
     else
         msg = "Added to '" .. groupName .. "': "
     end
 
-    if table.getn(added) > 0 then
-        msg = msg .. table.concat(added, ", ") .. " (" .. table.getn(added) .. " pets"
-        if table.getn(skipped) > 0 then
-            msg = msg .. ", skipped " .. table.getn(skipped) .. " excluded"
+    if table.getn(allAdded) > 0 then
+        msg = msg .. table.concat(allAdded, ", ") .. " (" .. table.getn(allAdded) .. " pets"
+        if table.getn(allSkipped) > 0 then
+            msg = msg .. ", skipped " .. table.getn(allSkipped) .. " excluded"
         end
         msg = msg .. ")"
         Lib1701.Message(MSG_PREFIX, msg)
-    elseif table.getn(skipped) > 0 then
-        Lib1701.Message(MSG_PREFIX, "All matching pets are excluded (" .. table.getn(skipped) .. " skipped)")
-    else
-        Lib1701.Message(MSG_PREFIX, "No pets found matching '" .. filter .. "'")
+    elseif table.getn(allSkipped) > 0 then
+        Lib1701.Message(MSG_PREFIX, "All matching pets are excluded (" .. table.getn(allSkipped) .. " skipped)")
+    end
+    if table.getn(notFound) > 0 then
+        Lib1701.Message(MSG_PREFIX, "No pets found matching: " .. table.concat(notFound, ", "))
     end
 end
 
--- Handle /pet group remove <name> <filter>
-local function DoGroupRemove(groupName, filter)
+-- Handle /pet group remove <name> <filter> (supports comma-separated lists and spell links)
+local function DoGroupRemove(groupName, input)
     if not groupName or groupName == "" then
-        Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter>")
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter|[link]>, ...")
         return
     end
 
-    if not filter or filter == "" then
-        Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter>")
+    if not input or input == "" then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter|[link]>, ...")
         return
     end
 
-    local removed, groupDeleted = Lib1701.RemoveFromGroup(
-        RandomPet1701_Data.groups,
-        groupName,
-        filter
-    )
+    local filters = Lib1701.ParseInputList(input)
+    if table.getn(filters) == 0 then
+        Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter|[link]>, ...")
+        return
+    end
 
-    if table.getn(removed) > 0 then
-        local msg = "Removed from '" .. groupName .. "': " .. table.concat(removed, ", ")
+    -- Check if group exists first
+    local members = Lib1701.GetGroup(RandomPet1701_Data.groups, groupName)
+    if not members then
+        Lib1701.Message(MSG_PREFIX, "Group '" .. groupName .. "' not found")
+        return
+    end
+
+    local allRemoved = {}
+    local notFound = {}
+    local wasDeleted = false
+
+    for _, filter in ipairs(filters) do
+        local removed, groupDeleted = Lib1701.RemoveFromGroup(
+            RandomPet1701_Data.groups,
+            groupName,
+            filter
+        )
+
         if groupDeleted then
+            wasDeleted = true
+        end
+
+        for _, name in ipairs(removed) do
+            table.insert(allRemoved, name)
+        end
+        if table.getn(removed) == 0 then
+            table.insert(notFound, filter)
+        end
+    end
+
+    if table.getn(allRemoved) > 0 then
+        local msg = "Removed from '" .. groupName .. "': " .. table.concat(allRemoved, ", ")
+        if wasDeleted then
             msg = msg .. " (group deleted)"
         end
         Lib1701.Message(MSG_PREFIX, msg)
-    else
-        local members = Lib1701.GetGroup(RandomPet1701_Data.groups, groupName)
-        if not members then
-            Lib1701.Message(MSG_PREFIX, "Group '" .. groupName .. "' not found")
-        else
-            Lib1701.Message(MSG_PREFIX, "No pets in '" .. groupName .. "' matching '" .. filter .. "'")
-        end
+    end
+    if table.getn(notFound) > 0 and not wasDeleted then
+        Lib1701.Message(MSG_PREFIX, "No pets in '" .. groupName .. "' matching: " .. table.concat(notFound, ", "))
     end
 end
 
@@ -675,38 +707,6 @@ local function DoDebug()
         end
     end
     DEFAULT_CHAT_FRAME:AddMessage("Pet-like items in bags: " .. bagCount)
-
-    -- Scan spellbook for pet-like spells
-    DEFAULT_CHAT_FRAME:AddMessage("|cFFFFFF00Scanning all spells for pet-like names:|r")
-    local i = 1
-    local totalSpells = 0
-    while true do
-        local spellName = GetSpellName(i, BOOKTYPE_SPELL)
-        if not spellName then
-            break
-        end
-        totalSpells = i
-
-        local lowerName = string.lower(spellName)
-        local looksLikePet = IsPetSpell(spellName) or
-            string.find(lowerName, "pet") or
-            string.find(lowerName, "companion") or
-            string.find(lowerName, "whelp") or
-            string.find(lowerName, "cat") or
-            string.find(lowerName, "parrot") or
-            string.find(lowerName, "frog") or
-            string.find(lowerName, "snake") or
-            string.find(lowerName, "rabbit") or
-            string.find(lowerName, "turtle") or
-            string.find(lowerName, "murloc")
-
-        if looksLikePet then
-            local detected = IsPetSpell(spellName) and " |cFF00FF00[DETECTED]|r" or " |cFFFF0000[MISSED]|r"
-            DEFAULT_CHAT_FRAME:AddMessage("  " .. i .. ": " .. spellName .. detected)
-        end
-        i = i + 1
-    end
-    DEFAULT_CHAT_FRAME:AddMessage("Total spells scanned: " .. totalSpells)
 end
 
 -- Slash command handler
