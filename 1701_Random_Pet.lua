@@ -1,6 +1,6 @@
 --[[
   1701 Random Pet - Random Companion Pet Selector for WoW 1.12 / Turtle WoW
-  Version 1.3.0
+  Version 1.4.0
 
   Usage: /pet [filter|groupname|command]
 
@@ -425,6 +425,13 @@ local function DoGroupAdd(groupName, input)
         return
     end
 
+    -- Validate group name format
+    local isValid, errMsg = Lib1701.IsValidGroupName(groupName)
+    if not isValid then
+        Lib1701.Message(MSG_PREFIX, errMsg)
+        return
+    end
+
     if RESERVED_COMMANDS[string.lower(groupName)] then
         Lib1701.Message(MSG_PREFIX, "Cannot use reserved name '" .. groupName .. "' as group name")
         return
@@ -499,6 +506,13 @@ local function DoGroupRemove(groupName, input)
         return
     end
 
+    -- Validate group name format
+    local isValid, errMsg = Lib1701.IsValidGroupName(groupName)
+    if not isValid then
+        Lib1701.Message(MSG_PREFIX, errMsg)
+        return
+    end
+
     if not input or input == "" then
         Lib1701.Message(MSG_PREFIX, "Usage: /pet group remove <groupname> <filter|[link]>, ...")
         return
@@ -556,6 +570,13 @@ end
 local function DoGroupList(groupName)
     if not groupName or groupName == "" then
         Lib1701.Message(MSG_PREFIX, "Usage: /pet group list <groupname>")
+        return
+    end
+
+    -- Validate group name format
+    local isValid, errMsg = Lib1701.IsValidGroupName(groupName)
+    if not isValid then
+        Lib1701.Message(MSG_PREFIX, errMsg)
         return
     end
 
@@ -763,6 +784,18 @@ local function SlashCmdHandler(msg)
     end
 end
 
+-- Default exclusions (utility companions that shouldn't be randomly summoned)
+local DEFAULT_EXCLUSIONS = {
+    "Mechanical Auctioneer",
+    "Field Repair Bot 75B",
+    "Caravan Kodo",
+    "Forworn Mule",
+    "Famous Fashionista Glitterglam",
+    "Squire Boltfling",
+    "Caretaker Brambleclaw",
+    "Summon: Auctioneer",
+}
+
 -- Create addon frame for event handling
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("VARIABLES_LOADED")
@@ -773,6 +806,10 @@ frame:SetScript("OnEvent", function()
     end
     if not RandomPet1701_Data.exclusions then
         RandomPet1701_Data.exclusions = {}
+        -- Add default exclusions for new installs
+        for _, name in ipairs(DEFAULT_EXCLUSIONS) do
+            table.insert(RandomPet1701_Data.exclusions, name)
+        end
     end
     if not RandomPet1701_Data.groups then
         RandomPet1701_Data.groups = {}
