@@ -1,11 +1,11 @@
 --[[
   1701 Random Pet - Random Companion Pet Selector for WoW 1.12 / Turtle WoW
-  Version 1.4.0
+  Version 1.5.0
 
   Usage: /pet [filter|groupname|command]
 
   Commands:
-    /pet                      - Random pet from all available
+    /pet                      - Random pet from ZzCompanions spellbook
     /pet <filter>             - Random pet matching filter
     /pet <groupname>          - Random pet from group
 
@@ -21,6 +21,7 @@
     /pet debug                - Show detected pets
 
   Notes:
+    - Pets are sourced from ZzCompanions spellbook tab only
     - Shift-click spell links are supported (e.g., /pet exclude [Pet Name])
     - Comma-separated lists are supported (e.g., /pet exclude cat, whelp, frog)
     - Exact match (e.g., /pet "Azure Whelpling") bypasses exclusions
@@ -29,180 +30,6 @@
 ]]
 
 RandomPet1701 = {}
-
--- Known companion pet item names (partial matches supported)
--- This list covers vanilla WoW companion pets
-local PET_PATTERNS = {
-    -- Cats
-    "Cat Carrier",
-    "Black Tabby",
-    "Bombay",
-    "Cornish Rex",
-    "Orange Tabby",
-    "Silver Tabby",
-    "Siamese",
-    "White Kitten",
-
-    -- Birds
-    "Parrot Cage",
-    "Cockatiel",
-    "Green Wing Macaw",
-    "Hyacinth Macaw",
-    "Senegal",
-    "Ancona Chicken",
-    "Chicken Egg",
-    "Westfall Chicken",
-    "Prairie Chicken",
-    "Owl",
-    "Great Horned Owl",
-    "Hawk Owl",
-
-    -- Snakes
-    "Black Kingsnake",
-    "Brown Snake",
-    "Crimson Snake",
-
-    -- Rabbits and Hares
-    "Rabbit Crate",
-    "Snowshoe Rabbit",
-    "Spring Rabbit",
-
-    -- Frogs and Toads
-    "Wood Frog",
-    "Tree Frog",
-    "Jubling",
-    "Mojo",
-
-    -- Mechanical Pets
-    "Mechanical Chicken",
-    "Mechanical Squirrel",
-    "Pet Bombling",
-    "Lil' Smoky",
-    "Lifelike Mechanical Toad",
-    "Tranquil Mechanical Yeti",
-
-    -- Dragonlings and Whelplings
-    "Whelpling",
-    "Azure Whelpling",
-    "Crimson Whelpling",
-    "Dark Whelpling",
-    "Emerald Whelpling",
-    "Tiny Crimson Whelpling",
-    "Tiny Emerald Whelpling",
-    "Sprite Darter",
-    "Sprite Darter Egg",
-
-    -- Dogs
-    "Pug",
-    "Worg Pup",
-    "Worg Carrier",
-
-    -- Insects and Spiders
-    "Firefly",
-    "Tree Frog Box",
-    "Cockroach",
-    "Spider",
-
-    -- Undead Pets
-    "Undead Minipet",
-    "Ghostly Skull",
-    "Haunted Memento",
-
-    -- Rodents
-    "Rat",
-    "Prairie Dog",
-    "Squirrel",
-    "Tiny Snowman",
-
-    -- Aquatic
-    "Fishing Raft",
-    "Magical Crawdad",
-    "Sea Turtle",
-    "Mr. Pinchy",
-
-    -- Holiday Pets
-    "Snowman Kit",
-    "Jingling Bell",
-    "Father Winter's Helper",
-    "Winter Reindeer",
-    "Pint-Sized Pink Pachyderm",
-    "Romantic Picnic Basket",
-    "Love Bird",
-    "Truesilver Shafted Arrow",
-
-    -- Faction Pets
-    "Argent Dawn",
-    "Argent Squire",
-    "Argent Gruntling",
-
-    -- Vendor/Quest Pets
-    "Tiny Snowman",
-    "Captured Firefly",
-    "Disgusting Oozeling",
-    "Murky",
-    "Lurky",
-    "Terky",
-    "Gurky",
-    "Murloc Egg",
-
-    -- Rare/World Drop Pets
-    "Panda Cub",
-    "Mini Diablo",
-    "Zergling",
-    "Spirit of Competition",
-
-    -- ZG Pets
-    "Hakkari",
-
-    -- Onyxia
-    "Onyxian Whelpling",
-
-    -- Raid Pets
-    "Chrominius",
-    "Mini Mindslayer",
-    "Anubisath Idol",
-    "Viscidus Globule",
-
-    -- Turtle WoW / Private Server Pets
-    "Pet",
-    "Companion",
-    "Minipet",
-    "Mini-pet",
-
-    -- Generic patterns to catch variations
-    "Carrier",
-    "Cage",
-    "Crate",
-    "Box",
-    "Egg",
-}
-
--- Check if an item name matches pet patterns
-local function IsPetItem(itemName)
-    if not itemName then return false end
-
-    local lowerName = string.lower(itemName)
-
-    -- Check for common pet keywords
-    if string.find(lowerName, "companion") or
-       string.find(lowerName, "minipet") or
-       string.find(lowerName, "mini%-pet") or
-       string.find(lowerName, "whelpling") or
-       string.find(lowerName, "carrier") or
-       string.find(lowerName, "cage") or
-       string.find(lowerName, "crate") then
-        return true
-    end
-
-    -- Check against known pet patterns
-    for _, pattern in ipairs(PET_PATTERNS) do
-        if string.find(lowerName, string.lower(pattern)) then
-            return true
-        end
-    end
-
-    return false
-end
 
 -- Check if pet should be included based on filter and exclusions
 -- Must be defined before GetAllPets which uses it
@@ -219,32 +46,6 @@ local function ShouldIncludePet(petName, filter, skipExclusions)
 
     -- Apply filter
     return Lib1701.MatchesFilter(petName, filter)
-end
-
--- Scan bags for pet items
-local function GetBagPets(filter)
-    local pets = {}
-
-    for bag = 0, 4 do
-        local numSlots = GetContainerNumSlots(bag)
-        for slot = 1, numSlots do
-            local itemLink = GetContainerItemLink(bag, slot)
-            if itemLink then
-                -- Extract item name from link
-                local _, _, itemName = string.find(itemLink, "%[(.+)%]")
-                if itemName and IsPetItem(itemName) then
-                    table.insert(pets, {
-                        type = "item",
-                        name = itemName,
-                        bag = bag,
-                        slot = slot
-                    })
-                end
-            end
-        end
-    end
-
-    return pets
 end
 
 -- Get pets from ZzCompanions spellbook tab
@@ -274,20 +75,12 @@ local function GetSpellPets()
     return pets
 end
 
--- Get all available pets
+-- Get all available pets (from ZzCompanions spellbook tab only)
 local function GetAllPets(filter, skipExclusions)
     local allPets = {}
 
-    -- Get bag pets
-    local bagPets = GetBagPets(nil)  -- Get all, filter later
-    for _, pet in ipairs(bagPets) do
-        if ShouldIncludePet(pet.name, filter, skipExclusions) then
-            table.insert(allPets, pet)
-        end
-    end
-
-    -- Get spell pets
-    local spellPets = GetSpellPets(nil)  -- Get all, filter later
+    -- Get spell pets from ZzCompanions tab
+    local spellPets = GetSpellPets()
     for _, pet in ipairs(spellPets) do
         if ShouldIncludePet(pet.name, filter, skipExclusions) then
             table.insert(allPets, pet)
@@ -611,13 +404,9 @@ local function DoGroupsList()
     end
 end
 
--- Use a pet
+-- Use a pet (cast spell from ZzCompanions tab)
 local function UsePet(pet)
-    if pet.type == "item" then
-        UseContainerItem(pet.bag, pet.slot)
-    elseif pet.type == "spell" then
-        CastSpell(pet.spellIndex, BOOKTYPE_SPELL)
-    end
+    CastSpell(pet.spellIndex, BOOKTYPE_SPELL)
 end
 
 -- Main pet function
@@ -636,7 +425,7 @@ local function DoRandomPet(filter, skipExclusions)
         if filter then
             Lib1701.Message(MSG_PREFIX, "No pets found matching '" .. filter .. "'")
         else
-            Lib1701.Message(MSG_PREFIX, "No pets found in your bags or spellbook.")
+            Lib1701.Message(MSG_PREFIX, "No pets found in ZzCompanions spellbook tab.")
         end
         return
     end
@@ -688,46 +477,12 @@ local function DoDebug()
         DEFAULT_CHAT_FRAME:AddMessage("  Tab " .. tab .. ": " .. (name or "?") .. " (offset=" .. offset .. ", count=" .. numSpells .. ")")
     end
 
-    -- Show detected pets
+    -- Show detected pets from ZzCompanions tab
     local pets = GetAllPets(nil)
     DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF00Detected Pets (" .. table.getn(pets) .. "):|r")
     for _, pet in ipairs(pets) do
-        DEFAULT_CHAT_FRAME:AddMessage("  [" .. pet.type .. "] " .. pet.name)
+        DEFAULT_CHAT_FRAME:AddMessage("  " .. pet.name)
     end
-
-    -- Scan bags for potential pets
-    DEFAULT_CHAT_FRAME:AddMessage("|cFFFFFF00Scanning bags for pet-like items:|r")
-    local bagCount = 0
-    for bag = 0, 4 do
-        local numSlots = GetContainerNumSlots(bag)
-        for slot = 1, numSlots do
-            local itemLink = GetContainerItemLink(bag, slot)
-            if itemLink then
-                local _, _, itemName = string.find(itemLink, "%[(.+)%]")
-                if itemName then
-                    local lowerName = string.lower(itemName)
-                    local looksLikePet = IsPetItem(itemName) or
-                        string.find(lowerName, "pet") or
-                        string.find(lowerName, "companion") or
-                        string.find(lowerName, "whelp") or
-                        string.find(lowerName, "cat") or
-                        string.find(lowerName, "parrot") or
-                        string.find(lowerName, "frog") or
-                        string.find(lowerName, "snake") or
-                        string.find(lowerName, "rabbit") or
-                        string.find(lowerName, "turtle") or
-                        string.find(lowerName, "murloc")
-
-                    if looksLikePet then
-                        bagCount = bagCount + 1
-                        local detected = IsPetItem(itemName) and " |cFF00FF00[DETECTED]|r" or " |cFFFF0000[MISSED]|r"
-                        DEFAULT_CHAT_FRAME:AddMessage("  Bag " .. bag .. " Slot " .. slot .. ": " .. itemName .. detected)
-                    end
-                end
-            end
-        end
-    end
-    DEFAULT_CHAT_FRAME:AddMessage("Pet-like items in bags: " .. bagCount)
 end
 
 -- Slash command handler
