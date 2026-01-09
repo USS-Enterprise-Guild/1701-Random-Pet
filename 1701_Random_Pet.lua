@@ -1,6 +1,6 @@
 --[[
   1701 Random Pet - Random Companion Pet Selector for WoW 1.12 / Turtle WoW
-  Version 1.1.0
+  Version 1.1.1
 
   Usage: /pet [filter|groupname|command]
 
@@ -242,6 +242,23 @@ local function IsPetItem(itemName)
     return false
 end
 
+-- Check if pet should be included based on filter and exclusions
+-- Must be defined before GetAllPets which uses it
+local function ShouldIncludePet(petName, filter, skipExclusions)
+    -- Exact match bypasses exclusions
+    if Lib1701.IsExactMatch(petName, filter) then
+        return true
+    end
+
+    -- Check exclusions (unless skipped)
+    if not skipExclusions and Lib1701.IsExcluded(RandomPet1701_Data.exclusions, petName) then
+        return false
+    end
+
+    -- Apply filter
+    return Lib1701.MatchesFilter(petName, filter)
+end
+
 -- Scan bags for pet items
 local function GetBagPets(filter)
     local pets = {}
@@ -353,22 +370,6 @@ local function GetAllPetNames()
         table.insert(names, { name = pet.name })
     end
     return names
-end
-
--- Check if pet should be included based on filter and exclusions
-local function ShouldIncludePet(petName, filter, skipExclusions)
-    -- Exact match bypasses exclusions
-    if Lib1701.IsExactMatch(petName, filter) then
-        return true
-    end
-
-    -- Check exclusions (unless skipped)
-    if not skipExclusions and Lib1701.IsExcluded(RandomPet1701_Data.exclusions, petName) then
-        return false
-    end
-
-    -- Apply filter
-    return Lib1701.MatchesFilter(petName, filter)
 end
 
 -- Message prefix
