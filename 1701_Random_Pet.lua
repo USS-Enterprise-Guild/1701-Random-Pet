@@ -226,14 +226,6 @@ local function IsPetItem(itemName)
     return false
 end
 
--- Check if item name matches the filter
-local function MatchesFilter(itemName, filter)
-    if not filter or filter == "" then
-        return true
-    end
-    return string.find(string.lower(itemName), string.lower(filter))
-end
-
 -- Scan bags for pet items
 local function GetBagPets(filter)
     local pets = {}
@@ -245,7 +237,7 @@ local function GetBagPets(filter)
             if itemLink then
                 -- Extract item name from link
                 local _, _, itemName = string.find(itemLink, "%[(.+)%]")
-                if itemName and IsPetItem(itemName) and MatchesFilter(itemName, filter) then
+                if itemName and IsPetItem(itemName) then
                     table.insert(pets, {
                         type = "item",
                         name = itemName,
@@ -283,7 +275,7 @@ local function GetSpellPets(filter)
         for i = 1, petTabCount do
             local spellIndex = petTabOffset + i
             local spellName = GetSpellName(spellIndex, BOOKTYPE_SPELL)
-            if spellName and MatchesFilter(spellName, filter) then
+            if spellName then
                 table.insert(pets, {
                     type = "spell",
                     name = spellName,
@@ -300,7 +292,7 @@ local function GetSpellPets(filter)
                 break
             end
 
-            if IsPetSpell(spellName) and MatchesFilter(spellName, filter) then
+            if IsPetSpell(spellName) then
                 table.insert(pets, {
                     type = "spell",
                     name = spellName,
@@ -315,19 +307,23 @@ local function GetSpellPets(filter)
 end
 
 -- Get all available pets
-local function GetAllPets(filter)
+local function GetAllPets(filter, skipExclusions)
     local allPets = {}
 
     -- Get bag pets
-    local bagPets = GetBagPets(filter)
+    local bagPets = GetBagPets(nil)  -- Get all, filter later
     for _, pet in ipairs(bagPets) do
-        table.insert(allPets, pet)
+        if ShouldIncludePet(pet.name, filter, skipExclusions) then
+            table.insert(allPets, pet)
+        end
     end
 
     -- Get spell pets
-    local spellPets = GetSpellPets(filter)
+    local spellPets = GetSpellPets(nil)  -- Get all, filter later
     for _, pet in ipairs(spellPets) do
-        table.insert(allPets, pet)
+        if ShouldIncludePet(pet.name, filter, skipExclusions) then
+            table.insert(allPets, pet)
+        end
     end
 
     return allPets
@@ -335,7 +331,7 @@ end
 
 -- Get all pet names for Lib1701 functions
 local function GetAllPetNames()
-    local pets = GetAllPets(nil)
+    local pets = GetAllPets(nil, true)  -- Skip exclusions to see all available pets
     local names = {}
     for _, pet in ipairs(pets) do
         table.insert(names, { name = pet.name })
