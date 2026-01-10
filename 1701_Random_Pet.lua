@@ -1,6 +1,6 @@
 --[[
   1701 Random Pet - Random Companion Pet Selector for WoW 1.12 / Turtle WoW
-  Version 1.5.0
+  Version 1.5.1
 
   Usage: /pet [filter|groupname|command]
 
@@ -30,6 +30,17 @@
 ]]
 
 RandomPet1701 = {}
+
+-- Minimum required lib version (for IsValidGroupName)
+local REQUIRED_LIB_VERSION = 5
+
+-- Check lib version on load
+if not Lib1701 or Lib1701.version < REQUIRED_LIB_VERSION then
+    local msg = "1701_Random_Pet requires Lib1701 version " .. REQUIRED_LIB_VERSION ..
+                " or higher. Please update all 1701 addons."
+    DEFAULT_CHAT_FRAME:AddMessage("|cFFFF0000" .. msg .. "|r")
+    return
+end
 
 -- Check if pet should be included based on filter and exclusions
 -- Must be defined before GetAllPets which uses it
