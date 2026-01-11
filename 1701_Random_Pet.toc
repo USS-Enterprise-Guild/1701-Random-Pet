@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: 1701 Addons - Random Pet
 ## Notes: Random companion pet selector with optional keyword filtering
-## Author: Claude
+## Author: Kilaire
 ## Version: 1.5.1
 ## SavedVariablesPerCharacter: RandomPet1701_Data
 
