@@ -5,7 +5,7 @@
   Usage: /pet [filter|groupname|command]
 
   Commands:
-    /pet                      - Random pet from ZzCompanions spellbook
+    /pet                      - Random pet from Companions spellbook
     /pet <filter>             - Random pet matching filter
     /pet <groupname>          - Random pet from group
 
@@ -21,7 +21,7 @@
     /pet debug                - Show detected pets
 
   Notes:
-    - Pets are sourced from ZzCompanions spellbook tab only
+    - Pets are sourced from Companions spellbook tab only
     - Shift-click spell links are supported (e.g., /pet exclude [Pet Name])
     - Comma-separated lists are supported (e.g., /pet exclude cat, whelp, frog)
     - Exact match (e.g., /pet "Azure Whelpling") bypasses exclusions
@@ -59,15 +59,15 @@ local function ShouldIncludePet(petName, filter, skipExclusions)
     return Lib1701.MatchesFilter(petName, filter)
 end
 
--- Get pets from ZzCompanions spellbook tab
+-- Get pets from Companions spellbook tab
 local function GetSpellPets()
     local pets = {}
 
-    -- Find the ZzCompanions tab
+    -- Find the Companions tab
     local numTabs = GetNumSpellTabs()
     for tab = 1, numTabs do
         local name, texture, offset, numSpells = GetSpellTabInfo(tab)
-        if name == "ZzCompanions" then
+        if name == "Companions" then
             for i = 1, numSpells do
                 local spellIndex = offset + i
                 local spellName = GetSpellName(spellIndex, BOOKTYPE_SPELL)
@@ -86,11 +86,11 @@ local function GetSpellPets()
     return pets
 end
 
--- Get all available pets (from ZzCompanions spellbook tab only)
+-- Get all available pets (from Companions spellbook tab only)
 local function GetAllPets(filter, skipExclusions)
     local allPets = {}
 
-    -- Get spell pets from ZzCompanions tab
+    -- Get spell pets from Companions tab
     local spellPets = GetSpellPets()
     for _, pet in ipairs(spellPets) do
         if ShouldIncludePet(pet.name, filter, skipExclusions) then
@@ -415,7 +415,7 @@ local function DoGroupsList()
     end
 end
 
--- Use a pet (cast spell from ZzCompanions tab)
+-- Use a pet (cast spell from Companions tab)
 local function UsePet(pet)
     CastSpell(pet.spellIndex, BOOKTYPE_SPELL)
 end
@@ -436,7 +436,7 @@ local function DoRandomPet(filter, skipExclusions)
         if filter then
             Lib1701.Message(MSG_PREFIX, "No pets found matching '" .. filter .. "'")
         else
-            Lib1701.Message(MSG_PREFIX, "No pets found in ZzCompanions spellbook tab.")
+            Lib1701.Message(MSG_PREFIX, "No pets found in Companions spellbook tab.")
         end
         return
     end
@@ -488,7 +488,7 @@ local function DoDebug()
         DEFAULT_CHAT_FRAME:AddMessage("  Tab " .. tab .. ": " .. (name or "?") .. " (offset=" .. offset .. ", count=" .. numSpells .. ")")
     end
 
-    -- Show detected pets from ZzCompanions tab
+    -- Show detected pets from Companions tab
     local pets = GetAllPets(nil)
     DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF00Detected Pets (" .. table.getn(pets) .. "):|r")
     for _, pet in ipairs(pets) do

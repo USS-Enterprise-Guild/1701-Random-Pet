@@ -34,7 +34,7 @@ A World of Warcraft 1.12 addon that randomly selects and summons a companion pet
 ## Features
 
 - Scans your bags for companion pet items (carriers, cages, crates, eggs, etc.)
-- Supports Turtle WoW's `ZzCompanions` spellbook tab
+- Supports Turtle WoW's `Companions` spellbook tab
 - Keyword filtering to summon specific pet types
 - Debug mode to troubleshoot pet detection
 - Pattern matching for 100+ vanilla WoW companion pets
